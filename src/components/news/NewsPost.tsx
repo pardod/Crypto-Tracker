@@ -13,7 +13,7 @@ interface NewsPostProps {
     user_id: string;
     user_email: string;
     username: string;
-    score: number;
+    likeCount: number; // Add likeCount as a prop
   };
   currentUserId?: string;
   onDelete: () => void;
@@ -51,7 +51,7 @@ export const NewsPost = ({ post, currentUserId, onDelete }: NewsPostProps) => {
               {post.content}
             </p>
           )}
-          <PostReactions postId={post.id} initialScore={post.score} />
+          <PostReactions postId={post.id} initialLikes={post.likeCount} />
           <p className="text-sm text-muted-foreground">
             Posted by {post.username || post.user_email} on{" "}
             {formatTimestamp(post.created_at)}

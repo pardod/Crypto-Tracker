@@ -6,12 +6,11 @@ export const handlePostReaction = async (
   type: 'like' | 'dislike',
   currentReaction: 'like' | 'dislike' | null
 ) => {
-  // Start a transaction
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("No session");
 
   try {
-    // If there's a current reaction, remove it first
+    // Step 1: Remove current reaction if it exists
     if (currentReaction) {
       const { error: deleteError } = await supabase
         .from('liked_posts')
@@ -20,23 +19,14 @@ export const handlePostReaction = async (
         .eq('user_id', userId);
 
       if (deleteError) throw deleteError;
-
-      // Update score based on removing previous reaction
-      const scoreChange = currentReaction === 'like' ? -1 : 1;
-      const { error: updateError } = await supabase
-        .from('news_posts')
-        .update({ score: supabase.rpc('increment', { value: scoreChange }) })
-        .eq('id', postId);
-
-      if (updateError) throw updateError;
     }
 
-    // If clicking the same reaction type, we're done (it was removed)
+    // If clicking the same reaction type, we're done (the reaction was just removed)
     if (currentReaction === type) {
       return null;
     }
 
-    // Add new reaction
+    // Step 2: Add new reaction to liked_posts
     const { error: insertError } = await supabase
       .from('liked_posts')
       .insert([
@@ -48,15 +38,6 @@ export const handlePostReaction = async (
       ]);
 
     if (insertError) throw insertError;
-
-    // Update score based on new reaction
-    const scoreChange = type === 'like' ? 1 : -1;
-    const { error: updateError } = await supabase
-      .from('news_posts')
-      .update({ score: supabase.rpc('increment', { value: scoreChange }) })
-      .eq('id', postId);
-
-    if (updateError) throw updateError;
 
     return type;
   } catch (error) {

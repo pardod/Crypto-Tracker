@@ -40,24 +40,43 @@ export const CreatePostDialog = ({ onPostCreated }: CreatePostDialogProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      const { error } = await supabase.from("news_posts").insert([
-        {
-          title,
-          content: content || null,
-          link: link || null,
-          user_id: user.id,
-          user_email: user.email,
-          username: user.user_metadata?.username || user.email?.split('@')[0]
-        },
-      ]);
+      // Step 1: Insert the new post into the news_posts table
+      const { data: postData, error: postError } = await supabase
+        .from("news_posts")
+        .insert([
+          {
+            title,
+            content: content || null,
+            link: link || null,
+            user_id: user.id,
+            user_email: user.email,
+            username: user.user_metadata?.username || user.email?.split('@')[0]
+          },
+        ])
+        .select() // Fetch the inserted post data
+        .single();
 
-      if (error) throw error;
+      if (postError) throw postError;
+
+      // Step 2: Automatically add a "like" from the user for their own post
+      const { error: likeError } = await supabase
+        .from("liked_posts")
+        .insert([
+          {
+            post_id: postData.id, // Use the ID of the newly created post
+            user_id: user.id,
+            reaction_type: 'like',
+          },
+        ]);
+
+      if (likeError) throw likeError;
 
       toast({
         title: "Success",
         description: "Post created successfully",
       });
       
+      // Reset form fields and close the dialog
       setTitle("");
       setContent("");
       setLink("");

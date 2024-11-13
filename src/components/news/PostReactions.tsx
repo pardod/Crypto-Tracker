@@ -8,35 +8,69 @@ import { supabase } from "@/lib/supabase";
 
 interface PostReactionsProps {
   postId: string;
-  initialScore: number;
+  initialLikes: number;
+  initialDislikes: number;
 }
 
-export const PostReactions = ({ postId, initialScore }: PostReactionsProps) => {
+export const PostReactions = ({ postId, initialLikes, initialDislikes }: PostReactionsProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [userReaction, setUserReaction] = useState<'like' | 'dislike' | null>(null);
-  const [score, setScore] = useState(initialScore);
+  const [likes, setLikes] = useState(initialLikes || 0);
+  const [dislikes, setDislikes] = useState(initialDislikes || 0);
+  const [score, setScore] = useState((initialLikes || 0) - (initialDislikes || 0));
 
   useEffect(() => {
-    if (user) {
-      const fetchUserReaction = async () => {
+    const fetchReactions = async () => {
+      if (user) {
+        // Fetch user's current reaction on the post
         const { data, error } = await supabase
           .from('liked_posts')
           .select('reaction_type')
           .eq('post_id', postId)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error("Error fetching user reaction:", error);
         } else if (data) {
           setUserReaction(data.reaction_type as 'like' | 'dislike');
+        } else {
+          setUserReaction(null);
         }
-      };
+      }
 
-      fetchUserReaction();
-    }
+      // Fetch the current like and dislike counts for the post
+      await fetchLikeDislikeCounts();
+    };
+
+    fetchReactions();
   }, [user, postId]);
+
+  // Function to fetch the latest counts for likes and dislikes
+  const fetchLikeDislikeCounts = async () => {
+    // Fetch likes count
+    const { count: likeCount } = await supabase
+      .from('liked_posts')
+      .select('*', { count: 'exact' })
+      .eq('post_id', postId)
+      .eq('reaction_type', 'like');
+
+    // Fetch dislikes count
+    const { count: dislikeCount } = await supabase
+      .from('liked_posts')
+      .select('*', { count: 'exact' })
+      .eq('post_id', postId)
+      .eq('reaction_type', 'dislike');
+
+    // Ensure likes and dislikes default to 0 if undefined
+    const finalLikes = likeCount ?? 0;
+    const finalDislikes = dislikeCount ?? 0;
+
+    setLikes(finalLikes);
+    setDislikes(finalDislikes);
+    setScore(finalLikes - finalDislikes); // Update the score based on latest counts
+  };
 
   const handleReaction = async (type: 'like' | 'dislike') => {
     if (!user) {
@@ -49,18 +83,12 @@ export const PostReactions = ({ postId, initialScore }: PostReactionsProps) => {
     }
 
     try {
+      // Handle reaction change and update userReaction state
       const newReaction = await handlePostReaction(postId, user.id, type, userReaction);
       setUserReaction(newReaction);
 
-      // Fetch the updated score
-      const { data, error } = await supabase
-        .from('news_posts')
-        .select('score')
-        .eq('id', postId)
-        .single();
-
-      if (error) throw error;
-      setScore(data.score);
+      // Refetch the updated counts and score from the database
+      await fetchLikeDislikeCounts();
 
       toast({
         title: "Success",

@@ -10,6 +10,7 @@ const News = () => {
   const { data: posts, refetch } = useQuery({
     queryKey: ["news-posts"],
     queryFn: async () => {
+      // Fetch posts and calculate like counts
       const { data, error } = await supabase
         .from("news_posts")
         .select(`
@@ -21,7 +22,20 @@ const News = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data;
+
+      // Calculate the like count for each post by filtering liked_posts
+      const postsWithLikeCount = data.map((post) => {
+        const likeCount = post.liked_posts?.filter(
+          (reaction) => reaction.reaction_type === 'like'
+        ).length || 0;
+
+        return {
+          ...post,
+          likeCount,
+        };
+      });
+
+      return postsWithLikeCount;
     },
   });
 
