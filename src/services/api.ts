@@ -1,5 +1,5 @@
 const BASE_URL = "https://api.coincap.io/v2";
-const API_KEY = "cd13a4b2-bf09-4b5d-a31d-ed8b62ea1de3";
+const API_KEY = import.meta.env.COIN_API_KEY;
 
 const headers = {
   Authorization: `Bearer ${API_KEY}`,
