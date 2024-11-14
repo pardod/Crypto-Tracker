@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://deybwfrintyvmyeyabpd.supabase.co';
-const supabaseAnonKey = import.meta.env.SUPABASE_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const hCaptchaSiteKey = import.meta.env.hCAPTCHA_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
